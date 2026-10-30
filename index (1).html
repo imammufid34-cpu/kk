@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a6b3c">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KK</title>
+<style>
+:root{--hijau:#1a6b3c;--emas:#b7871b;--bg:#f4f6f8;--teks:#1d2328;--muted:#6b7780;--merah:#b00020}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121619;--teks:#e8edf1;--muted:#93a0a9}}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--teks);min-height:100vh}
+header{background:var(--hijau);color:#fff;padding:16px;position:sticky;top:0;z-index:5}
+header h1{margin:0;font-size:18px}
+header small{opacity:.85}
+main{padding:14px;max-width:560px;margin:0 auto}
+.tabs{display:flex;gap:8px;margin-bottom:12px}
+.tabs button{flex:1;padding:10px;border-radius:8px;border:1px solid var(--hijau);background:transparent;color:var(--hijau);font-size:14px;font-weight:600}
+.tabs button.aktif{background:var(--hijau);color:#fff}
+.kartu{background:#fff;color:#1d2328;border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px #0002}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .kartu{background:#1d2428;color:#e8edf1}}
+.penghargaan{border:2px solid var(--emas)}
+input{width:100%;padding:11px;margin:5px 0;font-size:16px;border-radius:8px;border:1px solid #c5ccd2;background:#fff;color:#1d2328}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) input{background:#121619;color:#e8edf1;border-color:#3a4850}}
+.tombol{width:100%;padding:12px;margin-top:6px;border:none;border-radius:8px;background:var(--hijau);color:#fff;font-size:16px;font-weight:600}
+.tombol:disabled{background:#9aa5ad}
+.tombol.sekunder{background:transparent;border:1px solid var(--hijau);color:var(--hijau)}
+.tombol.bahaya{background:transparent;border:1px solid var(--merah);color:var(--merah)}
+.badge{display:inline-block;font-size:12px;padding:3px 8px;border-radius:20px;background:#f7efd9;color:var(--emas);font-weight:600}
+.kecil{font-family:ui-monospace,monospace;font-size:11px;word-break:break-all;color:var(--muted);margin-top:6px}
+.baris{display:flex;justify-content:space-between;gap:8px;font-size:14px;padding:3px 0}
+.baris span:first-child{color:var(--muted)}
+.ok{color:var(--hijau);font-weight:600}
+.gagal{color:var(--merah);font-weight:600}
+.catatan{font-size:12px;color:var(--muted);margin-top:8px}
+.progres{height:8px;background:#dfe5ea;border-radius:4px;overflow:hidden;margin-top:8px}
+.progres div{height:100%;width:0;background:var(--emas);transition:width .2s}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1d2328;color:#fff;padding:10px 16px;border-radius:8px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%}
+.toast.tampil{opacity:1}
+.label{font-size:13px;color:var(--muted);margin-top:6px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Kartu Penghargaan</h1>
+  <small>Prototipe · tanpa nilai uang · tidak bisa dijual</small>
+</header>
+
+<main>
+  <div class="tabs">
+    <button id="tab-tambang" class="aktif" onclick="pindah('tambang')">Tambang</button>
+    <button id="tab-daftar" onclick="pindah('daftar')">Daftar</button>
+    <button id="tab-node" onclick="pindah('node')">Node</button>
+  </div>
+
+  <!-- TAMBANG -->
+  <section id="view-tambang">
+    <div class="kartu">
+      <div class="baris"><b>Slot penghargaan</b><span id="slot" class="badge"></span></div>
+      <div class="catatan">Hanya 10 kartu pertama yang bisa diperoleh. Setiap kartu didapat lewat proses tambang kecil (mencari nilai yang cocok sampai hash diawali "000"). Kartu tidak punya nilai uang dan tidak bisa dipindahtangankan.</div>
+    </div>
+    <div class="kartu penghargaan">
+      <div class="label">Nama penerima kartu</div>
+      <input id="nama" placeholder="Contoh: Ahmad Fauzi">
+      <button id="tombolTambang" class="tombol" onclick="tambang()">Tambang kartu</button>
+      <div id="progres" class="progres hidden"><div id="bar"></div></div>
+      <p id="status" class="catatan"></p>
+    </div>
+  </section>
+
+  <!-- DAFTAR -->
+  <section id="view-daftar" class="hidden">
+    <div id="daftar"></div>
+  </section>
+
+  <!-- NODE -->
+  <section id="view-node" class="hidden">
+    <div class="kartu">
+      <div class="baris"><span>Node A (utama)</span><span id="infoA"></span></div>
+      <div class="baris"><span>Node B (salinan)</span><span id="infoB"></span></div>
+      <p id="hasilNode" class="baris" style="margin-top:8px"></p>
+    </div>
+    <div class="kartu">
+      <button class="tombol" onclick="bandingkan()">Bandingkan node A dan B</button>
+      <button class="tombol sekunder" onclick="salinDariA()">Node B menyalin dari A</button>
+      <button class="tombol bahaya" onclick="ubahSalinan()">Simulasi: ubah data di node B</button>
+      <div class="catatan">Node B menyimpan salinan sendiri. Kalau salinannya diubah, perbandingan akan menemukan perbedaannya.</div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const KUNCI_A = "kartu_node_a_v1";
+const KUNCI_B = "kartu_node_b_v1";
+const MAKS = 10;
+const TINGKAT = "000";
+let A = [], B = [], sedangMining = false;
+
+async function sha256(teks) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(teks));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Hanya bagian ini yang di-hash, urutannya tetap
+function isiUntukHash(b) {
+  return JSON.stringify({ nomor: b.nomor, nama: b.nama, waktu: b.waktu, prev: b.prev, nonce: b.nonce });
+}
+async function hitungHash(b) { return sha256(isiUntukHash(b)); }
+
+async function genesis() {
+  const g = { nomor: 0, nama: "GENESIS", waktu: "-", prev: "0", nonce: 0 };
+  g.hash = await hitungHash(g);
+  return g;
+}
+
+function muat(kunci) {
+  try { return JSON.parse(localStorage.getItem(kunci) || "null"); } catch (e) { return null; }
+}
+function simpan() {
+  try {
+    localStorage.setItem(KUNCI_A, JSON.stringify(A));
+    localStorage.setItem(KUNCI_B, JSON.stringify(B));
+  } catch (e) {}
+}
+
+async function init() {
+  A = muat(KUNCI_A);
+  if (!A || !A.length) A = [await genesis()];
+  B = muat(KUNCI_B);
+  if (!B || !B.length) B = JSON.parse(JSON.stringify(A));
+  simpan();
+  render();
+}
+
+function pindah(nama) {
+  ["tambang", "daftar", "node"].forEach(n => {
+    document.getElementById("view-" + n).classList.toggle("hidden", n !== nama);
+    document.getElementById("tab-" + n).classList.toggle("aktif", n === nama);
+  });
+  if (nama === "daftar") renderDaftar();
+  if (nama === "node") renderNode();
+}
+
+function toast(teks) {
+  const t = document.getElementById("toast");
+  t.textContent = teks;
+  t.classList.add("tampil");
+  setTimeout(() => t.classList.remove("tampil"), 2400);
+}
+
+function slotTerpakai() { return A.length - 1; }
+
+function render() {
+  const sisa = MAKS - slotTerpakai();
+  document.getElementById("slot").textContent = `${slotTerpakai()} / ${MAKS} terisi`;
+  const tombol = document.getElementById("tombolTambang");
+  tombol.disabled = sisa <= 0 || sedangMining;
+  tombol.textContent = sisa <= 0 ? "Semua 10 kartu sudah terisi" : "Tambang kartu";
+  renderDaftar();
+}
+
+async function tambang() {
+  const nama = document.getElementById("nama").value.trim();
+  if (!nama) { toast("Isi nama penerima dulu"); return; }
+  if (slotTerpakai() >= MAKS) { toast("Slot sudah penuh"); return; }
+
+  sedangMining = true;
+  render();
+  const status = document.getElementById("status");
+  const progres = document.getElementById("progres");
+  const bar = document.getElementById("bar");
+  progres.classList.remove("hidden");
+  status.textContent = "Menambang...";
+
+  const prev = A[A.length - 1];
+  const nomor = A.length;
+  const waktu = new Date().toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" });
+  let nonce = 0;
+
+  while (true) {
+    const kandidat = { nomor, nama, waktu, prev: prev.hash, nonce };
+    const h = await hitungHash(kandidat);
+    if (h.startsWith(TINGKAT)) {
+      A.push({ ...kandidat, hash: h });
+      break;
+    }
+    nonce++;
+    if (nonce % 1000 === 0) {
+      bar.style.width = Math.min(95, nonce / 300) + "%";
+      status.textContent = `Menambang... percobaan ${nonce.toLocaleString("id-ID")}`;
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+
+  simpan();
+  bar.style.width = "100%";
+  status.textContent = `Kartu #${nomor} berhasil ditambang untuk ${nama}.`;
+  document.getElementById("nama").value = "";
+  sedangMining = false;
+  setTimeout(() => progres.classList.add("hidden"), 800);
+  render();
+  toast("Kartu #" + nomor + " diperoleh");
+}
+
+function renderDaftar() {
+  const wadah = document.getElementById("daftar");
+  const daftar = A.slice(1).reverse();
+  if (!daftar.length) {
+    wadah.innerHTML = '<div class="kartu catatan">Belum ada kartu yang ditambang.</div>';
+    return;
+  }
+  wadah.innerHTML = daftar.map(b => `
+    <div class="kartu penghargaan">
+      <div class="baris"><b>Kartu #${b.nomor}</b><span class="badge">Penghargaan</span></div>
+      <div class="baris"><span>Penerima</span><span>${b.nama}</span></div>
+      <div class="baris"><span>Waktu</span><span>${b.waktu}</span></div>
+      <div class="kecil">Hash: ${b.hash}</div>
+      <div class="catatan">Tidak dapat dijual atau dipindahtangankan.</div>
+    </div>`).join("");
+}
+
+async function validasi(rantai) {
+  for (let i = 0; i < rantai.length; i++) {
+    const b = rantai[i];
+    if (await hitungHash(b) !== b.hash) return `Blok #${i} tidak cocok dengan hash-nya`;
+    if (i > 0) {
+      if (!b.hash.startsWith(TINGKAT)) return `Blok #${i} tidak memenuhi tingkat tambang`;
+      if (b.prev !== rantai[i - 1].hash) return `Rantai terputus di blok #${i}`;
+    }
+  }
+  return null;
+}
+
+async function infoRantai(rantai) {
+  const err = await validasi(rantai);
+  return err ? `<span class="gagal">Rusak</span>` : `<span class="ok">Valid · ${rantai.length - 1} kartu</span>`;
+}
+
+async function renderNode() {
+  document.getElementById("infoA").innerHTML = await infoRantai(A);
+  document.getElementById("infoB").innerHTML = await infoRantai(B);
+  document.getElementById("hasilNode").textContent = "";
+}
+
+async function bandingkan() {
+  const hasil = document.getElementById("hasilNode");
+  const errA = await validasi(A);
+  const errB = await validasi(B);
+  if (errA) { hasil.className = "baris gagal"; hasil.textContent = "Node A: " + errA; return; }
+  if (errB) { hasil.className = "baris gagal"; hasil.textContent = "Node B: " + errB; return; }
+  if (A.length !== B.length) {
+    hasil.className = "baris gagal";
+    hasil.textContent = `Jumlah kartu berbeda (A: ${A.length - 1}, B: ${B.length - 1})`;
+    return;
+  }
+  for (let i = 0; i < A.length; i++) {
+    if (A[i].hash !== B[i].hash) {
+      hasil.className = "baris gagal";
+      hasil.textContent = `Perbedaan di blok #${i}. Node B tidak sama dengan A.`;
+      return;
+    }
+  }
+  hasil.className = "baris ok";
+  hasil.textContent = "Node A dan B sama persis";
+}
+
+async function salinDariA() {
+  const err = await validasi(A);
+  if (err) { toast("Node A rusak, tidak bisa disalin"); return; }
+  B = JSON.parse(JSON.stringify(A));
+  simpan();
+  renderNode();
+  toast("Node B sekarang sama dengan A");
+}
+
+function ubahSalinan() {
+  if (B.length < 2) { toast("Belum ada kartu di node B untuk diubah"); return; }
+  B[1].nama = B[1].nama + " (diubah)";
+  simpan();
+  renderNode();
+  toast("Data di node B sudah diubah untuk simulasi");
+}
+
+init();
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js");}</script>
+</body>
+</html>
